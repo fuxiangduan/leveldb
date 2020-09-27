@@ -40,8 +40,8 @@ char* Arena::AllocateAligned(size_t bytes) {
   static_assert((align & (align - 1)) == 0,
                 "Pointer size should be a power of 2");
   size_t current_mod = reinterpret_cast<uintptr_t>(alloc_ptr_) & (align - 1);
-  size_t slop = (current_mod == 0 ? 0 : align - current_mod);
-  size_t needed = bytes + slop;
+  size_t slop = (current_mod == 0 ? 0 : align - current_mod); // 需要移动的大小
+  size_t needed = bytes + slop;  // 需要总的内存大小
   char* result;
   if (needed <= alloc_bytes_remaining_) {
     result = alloc_ptr_ + slop;
@@ -58,8 +58,8 @@ char* Arena::AllocateAligned(size_t bytes) {
 char* Arena::AllocateNewBlock(size_t block_bytes) {
   char* result = new char[block_bytes];
   blocks_.push_back(result);
-  memory_usage_.fetch_add(block_bytes + sizeof(char*),
-                          std::memory_order_relaxed);
+  memory_usage_.fetch_add(block_bytes + sizeof(char*), // vector中多了一个char指针
+                          std::memory_order_relaxed);  // atomic的接口
   return result;
 }
 

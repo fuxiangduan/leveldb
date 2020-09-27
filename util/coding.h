@@ -52,7 +52,7 @@ char* EncodeVarint64(char* dst, uint64_t value);
 // REQUIRES: dst has enough space for the value being written
 
 inline void EncodeFixed32(char* dst, uint32_t value) {
-  uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
+  uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);  // 为啥不能直接用char
 
   // Recent clang and gcc optimize this to a single mov / str instruction.
   buffer[0] = static_cast<uint8_t>(value);

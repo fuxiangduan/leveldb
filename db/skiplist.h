@@ -204,13 +204,13 @@ inline const Key& SkipList<Key, Comparator>::Iterator::key() const {
 }
 
 template <typename Key, class Comparator>
-inline void SkipList<Key, Comparator>::Iterator::Next() {
+inline void SkipList<Key, Comparator>::Iterator::Next() { // 时间复杂度 O(1)
   assert(Valid());
   node_ = node_->Next(0);
 }
 
 template <typename Key, class Comparator>
-inline void SkipList<Key, Comparator>::Iterator::Prev() {
+inline void SkipList<Key, Comparator>::Iterator::Prev() { // 需要执行一下查找，时间复杂度 O(LOG(n))
   // Instead of using explicit "prev" links, we just search for the
   // last node that falls before key.
   assert(Valid());
@@ -221,17 +221,17 @@ inline void SkipList<Key, Comparator>::Iterator::Prev() {
 }
 
 template <typename Key, class Comparator>
-inline void SkipList<Key, Comparator>::Iterator::Seek(const Key& target) {
+inline void SkipList<Key, Comparator>::Iterator::Seek(const Key& target) { // O(LOG(n))
   node_ = list_->FindGreaterOrEqual(target, nullptr);
 }
 
 template <typename Key, class Comparator>
-inline void SkipList<Key, Comparator>::Iterator::SeekToFirst() {
+inline void SkipList<Key, Comparator>::Iterator::SeekToFirst() {           // O(1)
   node_ = list_->head_->Next(0);
 }
 
 template <typename Key, class Comparator>
-inline void SkipList<Key, Comparator>::Iterator::SeekToLast() {
+inline void SkipList<Key, Comparator>::Iterator::SeekToLast() {            // O(LOG(n))
   node_ = list_->FindLast();
   if (node_ == list_->head_) {
     node_ = nullptr;
@@ -241,8 +241,16 @@ inline void SkipList<Key, Comparator>::Iterator::SeekToLast() {
 template <typename Key, class Comparator>
 int SkipList<Key, Comparator>::RandomHeight() {
   // Increase height with probability 1 in kBranching
-  static const unsigned int kBranching = 4;
+  static const unsigned int kBranching = 4; // 只会local用到的静态变量
+                                            // 还是定义在local
   int height = 1;
+  // 在这里 (rnd_.Next() % kBranching) == 0)的概率 是1/4
+  // 所以是在此处控制了每层的节点数量
+  // level 0 是全部的节点
+  // level 1 是 count(level 0) * 1/4
+  // level 2 是 count(level 0) * 1/4 * 1/4
+  // ...
+  // level n 是 count(level 0) * (1/4)^n
   while (height < kMaxHeight && ((rnd_.Next() % kBranching) == 0)) {
     height++;
   }
@@ -261,6 +269,8 @@ template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node*
 SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
                                               Node** prev) const {
+  // prev 是一个数组，其包含每一层 GreaterOrEqual then key的前一个节点的指针
+  // 会用在insert的时候
   Node* x = head_;
   int level = GetMaxHeight() - 1;
   while (true) {
@@ -325,7 +335,7 @@ template <typename Key, class Comparator>
 SkipList<Key, Comparator>::SkipList(Comparator cmp, Arena* arena)
     : compare_(cmp),
       arena_(arena),
-      head_(NewNode(0 /* any key will do */, kMaxHeight)),
+      head_(NewNode(0 /* any key will do */, kMaxHeight)), // head_并不是一个真实的node
       max_height_(1),
       rnd_(0xdeadbeef) {
   for (int i = 0; i < kMaxHeight; i++) {
@@ -334,8 +344,8 @@ SkipList<Key, Comparator>::SkipList(Comparator cmp, Arena* arena)
 }
 
 template <typename Key, class Comparator>
-void SkipList<Key, Comparator>::Insert(const Key& key) {
-  // TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
+void SkipList<Key, Comparator>::Insert(const Key& key) { // O(LOG(n))
+  // TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual() ?? 这个没懂
   // here since Insert() is externally synchronized.
   Node* prev[kMaxHeight];
   Node* x = FindGreaterOrEqual(key, prev);
@@ -343,8 +353,8 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
   // Our data structure does not allow duplicate insertion
   assert(x == nullptr || !Equal(key, x->key));
 
-  int height = RandomHeight();
-  if (height > GetMaxHeight()) {
+  int height = RandomHeight(); // 用随机height控制了每层的node数量，层级越高，节点越少
+  if (height > GetMaxHeight()) { // 多出来的层，prev为head_
     for (int i = GetMaxHeight(); i < height; i++) {
       prev[i] = head_;
     }
@@ -358,17 +368,17 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
     max_height_.store(height, std::memory_order_relaxed);
   }
 
-  x = NewNode(key, height);
+  x = NewNode(key, height); // 节点的next层数为当前max_height_高度
   for (int i = 0; i < height; i++) {
     // NoBarrier_SetNext() suffices since we will add a barrier when
     // we publish a pointer to "x" in prev[i].
     x->NoBarrier_SetNext(i, prev[i]->NoBarrier_Next(i));
-    prev[i]->SetNext(i, x);
+    prev[i]->SetNext(i, x); // '写不后'，前面的write语句不会重排到此句之后
   }
 }
 
 template <typename Key, class Comparator>
-bool SkipList<Key, Comparator>::Contains(const Key& key) const {
+bool SkipList<Key, Comparator>::Contains(const Key& key) const { // O(LOG(n))
   Node* x = FindGreaterOrEqual(key, nullptr);
   if (x != nullptr && Equal(key, x->key)) {
     return true;

@@ -86,14 +86,14 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr,
 
   // Format the header
   char buf[kHeaderSize];
-  buf[4] = static_cast<char>(length & 0xff);
-  buf[5] = static_cast<char>(length >> 8);
-  buf[6] = static_cast<char>(t);
+  buf[4] = static_cast<char>(length & 0xff);  // 长度第一个字节
+  buf[5] = static_cast<char>(length >> 8);    // 长度第二个字节
+  buf[6] = static_cast<char>(t);              // Type字节
 
   // Compute the crc of the record type and the payload.
   uint32_t crc = crc32c::Extend(type_crc_[t], ptr, length);
   crc = crc32c::Mask(crc);  // Adjust for storage
-  EncodeFixed32(buf, crc);
+  EncodeFixed32(buf, crc);  // 写入checksum
 
   // Write the header and the payload
   Status s = dest_->Append(Slice(buf, kHeaderSize));
