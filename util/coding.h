@@ -52,7 +52,7 @@ char* EncodeVarint64(char* dst, uint64_t value);
 // REQUIRES: dst has enough space for the value being written
 
 inline void EncodeFixed32(char* dst, uint32_t value) {
-  uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);  // 为啥不能直接用char
+  uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
 
   // Recent clang and gcc optimize this to a single mov / str instruction.
   buffer[0] = static_cast<uint8_t>(value);
@@ -105,6 +105,7 @@ inline uint64_t DecodeFixed64(const char* ptr) {
 // Internal routine for use by fallback path of GetVarint32Ptr
 const char* GetVarint32PtrFallback(const char* p, const char* limit,
                                    uint32_t* value);
+// 获取不定长数字 最高位是1标示这个字节属于数字
 inline const char* GetVarint32Ptr(const char* p, const char* limit,
                                   uint32_t* value) {
   if (p < limit) {

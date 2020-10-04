@@ -90,7 +90,7 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
   char* p = EncodeVarint32(buf, internal_key_size);
   std::memcpy(p, key.data(), key_size);
   p += key_size;
-  EncodeFixed64(p, (s << 8) | type);
+  EncodeFixed64(p, (s << 8) | type); // 这里64数，用前56位表示SequenceNumber,后8位表示type
   p += 8;
   p = EncodeVarint32(p, val_size);
   std::memcpy(p, value.data(), val_size);
@@ -134,4 +134,4 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
   return false;
 }
 
-}  // namespace leveldb
+}  // namespace leveldb；

@@ -6,38 +6,43 @@
 
 namespace leveldb {
 
+// 定长32位整数
 void PutFixed32(std::string* dst, uint32_t value) {
   char buf[sizeof(value)];
   EncodeFixed32(buf, value);
   dst->append(buf, sizeof(buf));
 }
 
-// append to dst
+// append to dst 定长64位整数
 void PutFixed64(std::string* dst, uint64_t value) {
   char buf[sizeof(value)];
   EncodeFixed64(buf, value);
   dst->append(buf, sizeof(buf));
 }
 
+// 不定长32位整数
+// 变长整数用最高位当作标示位，所以每个字节只能存7位bit，
+// 所以最高需要5个字节来存储32位整数，但是一般都是小整数，
+// 所以整体上是节省空间的
 char* EncodeVarint32(char* dst, uint32_t v) {
   // Operate on characters as unsigneds
   uint8_t* ptr = reinterpret_cast<uint8_t*>(dst);
-  static const int B = 128;
-  if (v < (1 << 7)) {
+  static const int B = 128;   // 最高位是1，作为标示使用；（ASCII码的最高位都是0）
+  if (v < (1 << 7)) {         // 需要1个字节
     *(ptr++) = v;
-  } else if (v < (1 << 14)) {
+  } else if (v < (1 << 14)) { // 需要2个字节
     *(ptr++) = v | B;
     *(ptr++) = v >> 7;
-  } else if (v < (1 << 21)) {
+  } else if (v < (1 << 21)) { // 需要3个字节
     *(ptr++) = v | B;
     *(ptr++) = (v >> 7) | B;
     *(ptr++) = v >> 14;
-  } else if (v < (1 << 28)) {
+  } else if (v < (1 << 28)) { // 需要4个字节
     *(ptr++) = v | B;
     *(ptr++) = (v >> 7) | B;
     *(ptr++) = (v >> 14) | B;
     *(ptr++) = v >> 21;
-  } else {
+  } else {                    // 需要5个字节
     *(ptr++) = v | B;
     *(ptr++) = (v >> 7) | B;
     *(ptr++) = (v >> 14) | B;
